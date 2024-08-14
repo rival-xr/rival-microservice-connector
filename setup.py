@@ -6,4 +6,7 @@ setup(
     packages=find_packages(),
     install_requires=[],
     python_requires='>=3.6',
+    setup_requires=[
+        "setuptools>=61.0",
+    ]
 )
