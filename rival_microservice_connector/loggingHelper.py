@@ -1,13 +1,13 @@
 import logging
 import sys
 
-class _InfoFilter(logging.Filter):
+class _OutFilter(logging.Filter):
     def filter(self, rec):
         return rec.levelno in (logging.DEBUG, logging.INFO)
 
 def configure_logging():
   outHandler = logging.StreamHandler(sys.stdout)
-  outHandler.addFilter(_InfoFilter())
+  outHandler.addFilter(_OutFilter())
 
   errHandler = logging.StreamHandler()
   errHandler.setLevel(logging.WARNING)
