@@ -1,19 +1,20 @@
 import json
 import pika
 import traceback
+import logging
 
 from time import sleep
 from functools import partial
 
 class RabbitMQ:
-    def __init__(self, host, port, user, password, logger, priority, max_priority):
+    def __init__(self, host, port, user, password, max_priority = None):
         self.host = host
         self.port = port
         self.user = user
         self.password = password
-        self.logger = logger
-        self.priority = priority
+        self.logger = logging.getLogger(__name__)
         self.max_priority = max_priority
+        logging.getLogger("pika").setLevel(logging.WARN)
 
     def __get_pika_connection(self):
         credentials = pika.PlainCredentials(self.user, self.password)
@@ -40,7 +41,7 @@ class RabbitMQ:
                 connection = self.__get_pika_connection()
                 channel = connection.channel()
                 arg = {}
-                if self.priority:
+                if self.max_priority:
                     arg = {"x-max-priority": self.max_priority}
                 channel.queue_declare(queue=queue_name, durable=True, arguments=arg)
                 channel.basic_consume(queue=queue_name, on_message_callback=partial(self.__on_message_callback, processing_function=processing_function))
