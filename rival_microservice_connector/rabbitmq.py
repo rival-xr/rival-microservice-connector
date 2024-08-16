@@ -6,12 +6,14 @@ from time import sleep
 from functools import partial
 
 class RabbitMQ:
-    def __init__(self, host, port, user, password, logger):
+    def __init__(self, host, port, user, password, logger, priority, max_priority):
         self.host = host
         self.port = port
         self.user = user
         self.password = password
         self.logger = logger
+        self.priority = priority
+        self.max_priority = max_priority
 
     def __get_pika_connection(self):
         credentials = pika.PlainCredentials(self.user, self.password)
@@ -37,8 +39,10 @@ class RabbitMQ:
             try:
                 connection = self.__get_pika_connection()
                 channel = connection.channel()
-
-                channel.queue_declare(queue=queue_name, durable=True)
+                arg = {}
+                if self.priority:
+                    arg = {"x-max-priority": self.max_priority}
+                channel.queue_declare(queue=queue_name, durable=True, arguments=arg)
                 channel.basic_consume(queue=queue_name, on_message_callback=partial(self.__on_message_callback, processing_function=processing_function))
                 self.logger.info(' [*] Waiting for messages. To exit press CTRL+C')
                 channel.start_consuming()
