@@ -1,4 +1,4 @@
-# rival-microservice-connector
+# 🔗 rival-microservice-connector
 
 This is a library for common functionality in the python microservices.
 
