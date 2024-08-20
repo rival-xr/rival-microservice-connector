@@ -6,6 +6,8 @@ import logging
 from time import sleep
 from functools import partial
 
+import pika.exceptions
+
 class RabbitMQ:
     def __init__(self, host, port, user, password, max_priority = None):
         self.host = host
@@ -43,7 +45,12 @@ class RabbitMQ:
                 arg = {}
                 if self.max_priority:
                     arg = {"x-max-priority": self.max_priority}
-                channel.queue_declare(queue=queue_name, durable=True, arguments=arg)
+                try:
+                    channel.queue_declare(queue=queue_name, durable=True, arguments=arg)
+                except pika.exceptions.AMQPChannelError as e:
+                    if e.args[0] == 406 and "PRECONDITION_FAILED" in e.args[1] and "x-max-priority" in e.args[1]:
+                        channel.queue_delete(queue=queue_name)
+                        channel.queue_declare(queue=queue_name, durable=True, arguments=arg)
                 channel.basic_consume(queue=queue_name, on_message_callback=partial(self.__on_message_callback, processing_function=processing_function))
                 self.logger.info(' [*] Waiting for messages. To exit press CTRL+C')
                 channel.start_consuming()
