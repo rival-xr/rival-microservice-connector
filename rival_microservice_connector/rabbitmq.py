@@ -32,7 +32,6 @@ class RabbitMQ:
 
     def __on_message_callback(self, ch, method, properties, body, processing_function):
         self.logger.info(" [x] Received %r" % body)
-        ch.basic_ack(delivery_tag=method.delivery_tag)
         message= json.loads(body)
         jobId = message["jobId"]
         processing_function(jobId, message["payload"])
@@ -51,7 +50,7 @@ class RabbitMQ:
                     if e.args[0] == 406 and "PRECONDITION_FAILED" in e.args[1] and "x-max-priority" in e.args[1]:
                         channel.queue_delete(queue=queue_name)
                         channel.queue_declare(queue=queue_name, durable=True, arguments=arg)
-                channel.basic_consume(queue=queue_name, on_message_callback=partial(self.__on_message_callback, processing_function=processing_function))
+                channel.basic_consume(queue=queue_name, on_message_callback=partial(self.__on_message_callback, processing_function=processing_function), auto_ack=True)
                 self.logger.info(' [*] Waiting for messages. To exit press CTRL+C')
                 channel.start_consuming()
             except Exception:
