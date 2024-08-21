@@ -27,6 +27,7 @@ class RabbitMQ:
         message = json.dumps(message)
         connection = self.__get_pika_connection()
         channel = connection.channel()
+        channel.basic_qos(prefetch_count=1)
         channel.queue_declare(queue=queue, durable=True)
         channel.basic_publish(exchange='', routing_key=queue, body=message)
 
