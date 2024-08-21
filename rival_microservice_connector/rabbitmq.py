@@ -8,6 +8,8 @@ from functools import partial
 
 import pika.exceptions
 
+STATUS_QUEUE_NAME = "job_status"
+
 class RabbitMQ:
     def __init__(self, host, port, user, password, max_priority = None):
         self.host = host
@@ -32,8 +34,10 @@ class RabbitMQ:
 
     def __on_message_callback(self, ch, method, properties, body, processing_function):
         self.logger.info(" [x] Received %r" % body)
-        message= json.loads(body)
         jobId = message["jobId"]
+        self.send_json_message(STATUS_QUEUE_NAME, {"jobId": jobId, "status": "IN_PROGRESS"})
+        ch.basic_ack(delivery_tag=method.delivery_tag)
+        message= json.loads(body)
         processing_function(jobId, message["payload"])
 
     def listen_to_messages(self, queue_name, processing_function):
@@ -41,7 +45,7 @@ class RabbitMQ:
             try:
                 connection = self.__get_pika_connection()
                 channel = connection.channel()
-                channel.basic_qos(prefetch_count=1)
+                channel.basic_qos(prefetch_count=1, global_qos=True)
                 arg = {}
                 if self.max_priority:
                     arg = {"x-max-priority": self.max_priority}
@@ -51,7 +55,7 @@ class RabbitMQ:
                     if e.args[0] == 406 and "PRECONDITION_FAILED" in e.args[1] and "x-max-priority" in e.args[1]:
                         channel.queue_delete(queue=queue_name)
                         channel.queue_declare(queue=queue_name, durable=True, arguments=arg)
-                channel.basic_consume(queue=queue_name, on_message_callback=partial(self.__on_message_callback, processing_function=processing_function), auto_ack=True)
+                channel.basic_consume(queue=queue_name, on_message_callback=partial(self.__on_message_callback, processing_function=processing_function))
                 self.logger.info(' [*] Waiting for messages. To exit press CTRL+C')
                 channel.start_consuming()
             except Exception:
