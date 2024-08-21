@@ -33,11 +33,11 @@ class RabbitMQ:
         channel.basic_publish(exchange='', routing_key=queue, body=message)
 
     def __on_message_callback(self, ch, method, properties, body, processing_function):
+        message= json.loads(body)
         self.logger.info(" [x] Received %r" % body)
         jobId = message["jobId"]
         self.send_json_message(STATUS_QUEUE_NAME, {"jobId": jobId, "status": "IN_PROGRESS"})
         ch.basic_ack(delivery_tag=method.delivery_tag)
-        message= json.loads(body)
         processing_function(jobId, message["payload"])
 
     def listen_to_messages(self, queue_name, processing_function):
