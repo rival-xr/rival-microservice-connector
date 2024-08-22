@@ -3,7 +3,7 @@ import sys
 
 class _OutFilter(logging.Filter):
     def filter(self, rec):
-        return rec.levelno in (logging.ERROR, logging.INFO)
+        return rec.levelno in (logging.DEBUG, logging.INFO)
 
 def configure_logging():
   outHandler = logging.StreamHandler(sys.stdout)
