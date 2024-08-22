@@ -22,6 +22,9 @@ class RabbitMQ:
         logging.getLogger("pika").setLevel(logging.WARN)
 
     def __get_pika_connection(self):
+
+        # TODO: Run jobs in a separarate thread instead of setting heartbeat timeout
+
         credentials = pika.PlainCredentials(self.user, self.password)
         parameters = pika.ConnectionParameters(self.host, self.port, "/", credentials=credentials, heartbeat=self.heartbeat_timeout)
         return pika.BlockingConnection(parameters)
