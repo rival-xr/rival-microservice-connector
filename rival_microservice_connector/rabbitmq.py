@@ -44,10 +44,18 @@ class RabbitMQ:
         processing_function(jobId, message["payload"], ch, method)
 
     def nack_message(self, ch, method, requeue: bool = False):
-        ch.basic_nack(delivery_tag=method.delivery_tag, requeue=requeue)
+        if ch.is_open:
+            ch.basic_ack(delivery_tag=method.delivery_tag, requeue=requeue)
+        else:
+            self.logger.error("Channel is closed, cannot nack message")
+            pass
 
     def ack_message(self, ch, method):
-        ch.basic_ack(delivery_tag=method.delivery_tag)
+        if ch.is_open:
+            ch.basic_ack(delivery_tag=method.delivery_tag)
+        else:
+            self.logger.error("Channel is closed, cannot ack message")
+            pass
     def listen_to_messages(self, queue_name, processing_function):
         while True:
             try:
@@ -68,4 +76,5 @@ class RabbitMQ:
                 channel.start_consuming()
             except Exception:
                 self.logger.error(traceback.format_exc())
+                channel.stop_consuming()
                 sleep(20)
