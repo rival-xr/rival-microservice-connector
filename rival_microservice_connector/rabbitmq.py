@@ -20,19 +20,13 @@ class RabbitMQ:
         self.logger = logging.getLogger(__name__)
         self.max_priority = max_priority
         logging.getLogger("pika").setLevel(logging.WARN)
-
-    def __get_pika_connection(self):
-
-        # TODO: Run jobs in a separarate thread instead of setting heartbeat timeout
-
         credentials = pika.PlainCredentials(self.user, self.password)
         parameters = pika.ConnectionParameters(self.host, self.port, "/", credentials=credentials, heartbeat=self.heartbeat_timeout)
-        return pika.BlockingConnection(parameters)
+        self.connection = pika.BlockingConnection(parameters)
 
     def send_json_message(self, queue, message):
         message = json.dumps(message)
-        connection = self.__get_pika_connection()
-        channel = connection.channel()
+        channel = self.connection.channel()
         channel.queue_declare(queue=queue, durable=True)
         channel.basic_publish(exchange='', routing_key=queue, body=message)
         channel.close()
@@ -57,11 +51,19 @@ class RabbitMQ:
         else:
             self.logger.error("Channel is closed, cannot ack message")
             pass
+
+    def threadsafe_nack_message(self, ch, method, requeue: bool = False):
+        nack_cb = partial(self.nack_message, ch=ch, method=method, requeue=requeue)
+        self.connection.add_callback_threadsafe(nack_cb)
+
+    def threadsafe_ack_message(self, ch, method):
+        ack_cb = partial(self.ack_message, ch=ch, method=method)
+        self.connection.add_callback_threadsafe(ack_cb)
+
     def listen_to_messages(self, queue_name, processing_function):
         while True:
             try:
-                connection = self.__get_pika_connection()
-                channel = connection.channel()
+                channel = self.connection.channel()
                 channel.basic_qos(prefetch_count=1, global_qos=True)
                 arg = {}
                 if self.max_priority:
