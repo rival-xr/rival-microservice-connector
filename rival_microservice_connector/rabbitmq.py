@@ -11,18 +11,19 @@ import pika.exceptions
 STATUS_QUEUE_NAME = "job_status"
 
 class RabbitMQ:
-    def __init__(self, host, port, user, password, max_priority = None):
+    def __init__(self, host, port, user, password, heartbeat_timeout=600, max_priority = None):
         self.host = host
         self.port = port
         self.user = user
         self.password = password
+        self.heartbeat_timeout = heartbeat_timeout
         self.logger = logging.getLogger(__name__)
         self.max_priority = max_priority
         logging.getLogger("pika").setLevel(logging.WARN)
 
     def __get_pika_connection(self):
         credentials = pika.PlainCredentials(self.user, self.password)
-        parameters = pika.ConnectionParameters(self.host, self.port, "/", credentials=credentials)
+        parameters = pika.ConnectionParameters(self.host, self.port, "/", credentials=credentials, heartbeat=self.heartbeat_timeout)
         return pika.BlockingConnection(parameters)
 
     def send_json_message(self, queue, message):
