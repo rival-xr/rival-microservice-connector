@@ -37,9 +37,13 @@ class RabbitMQ:
         self.logger.info(" [x] Received %r" % body)
         jobId = message["jobId"]
         self.send_json_message(STATUS_QUEUE_NAME, {"jobId": jobId, "status": "IN_PROGRESS"})
-        ch.basic_ack(delivery_tag=method.delivery_tag)
-        processing_function(jobId, message["payload"])
+        processing_function(jobId, message["payload"], ch, method)
 
+    def nack_message(self, ch, method, requeue: bool = True):
+        ch.basic_nack(delivery_tag=method.delivery_tag, requeue=requeue)
+
+    def ack_message(self, ch, method):
+        ch.basic_ack(delivery_tag=method.delivery_tag)
     def listen_to_messages(self, queue_name, processing_function):
         while True:
             try:
