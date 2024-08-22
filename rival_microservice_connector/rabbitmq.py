@@ -39,7 +39,7 @@ class RabbitMQ:
         self.send_json_message(STATUS_QUEUE_NAME, {"jobId": jobId, "status": "IN_PROGRESS"})
         processing_function(jobId, message["payload"], ch, method)
 
-    def nack_message(self, ch, method, requeue: bool = True):
+    def nack_message(self, ch, method, requeue: bool = False):
         ch.basic_nack(delivery_tag=method.delivery_tag, requeue=requeue)
 
     def ack_message(self, ch, method):
