@@ -35,6 +35,7 @@ class RabbitMQ:
         channel = connection.channel()
         channel.queue_declare(queue=queue, durable=True)
         channel.basic_publish(exchange='', routing_key=queue, body=message)
+        channel.close()
 
     def __on_message_callback(self, ch, method, properties, body, processing_function):
         message= json.loads(body)
@@ -77,4 +78,5 @@ class RabbitMQ:
             except Exception:
                 self.logger.error(traceback.format_exc())
                 channel.stop_consuming()
+                channel.close()
                 sleep(20)
