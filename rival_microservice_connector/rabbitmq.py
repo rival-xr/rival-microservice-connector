@@ -8,6 +8,8 @@ from functools import partial
 
 import pika.exceptions
 
+STATUS_QUEUE_NAME = "job_status"
+
 class RabbitMQ:
     def __init__(self, host, port, user, password, max_priority = None):
         self.host = host
@@ -31,17 +33,23 @@ class RabbitMQ:
         channel.basic_publish(exchange='', routing_key=queue, body=message)
 
     def __on_message_callback(self, ch, method, properties, body, processing_function):
-        self.logger.info(" [x] Received %r" % body)
-        ch.basic_ack(delivery_tag=method.delivery_tag)
         message= json.loads(body)
+        self.logger.info(" [x] Received %r" % body)
         jobId = message["jobId"]
-        processing_function(jobId, message["payload"])
+        self.send_json_message(STATUS_QUEUE_NAME, {"jobId": jobId, "status": "IN_PROGRESS"})
+        processing_function(jobId, message["payload"], ch, method)
 
+    def nack_message(self, ch, method, requeue: bool = False):
+        ch.basic_nack(delivery_tag=method.delivery_tag, requeue=requeue)
+
+    def ack_message(self, ch, method):
+        ch.basic_ack(delivery_tag=method.delivery_tag)
     def listen_to_messages(self, queue_name, processing_function):
         while True:
             try:
                 connection = self.__get_pika_connection()
                 channel = connection.channel()
+                channel.basic_qos(prefetch_count=1, global_qos=True)
                 arg = {}
                 if self.max_priority:
                     arg = {"x-max-priority": self.max_priority}
