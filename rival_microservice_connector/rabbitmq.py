@@ -40,7 +40,7 @@ class RabbitMQ:
 
     def nack_message(self, ch, method, requeue: bool = False):
         if ch.is_open:
-            ch.basic_ack(delivery_tag=method.delivery_tag, requeue=requeue)
+            ch.basic_nack(delivery_tag=method.delivery_tag, requeue=requeue)
         else:
             self.logger.error("Channel is closed, cannot nack message")
             pass
