@@ -24,6 +24,9 @@ class RabbitMQ:
         parameters = pika.ConnectionParameters(self.host, self.port, "/", credentials=credentials, heartbeat=self.heartbeat_timeout)
         self.connection = pika.BlockingConnection(parameters)
 
+    def close_connection(self):
+        self.connection.close()
+
     def send_json_message(self, queue, message):
         message = json.dumps(message)
         channel = self.connection.channel()
