@@ -33,10 +33,12 @@ class RabbitMQ:
 
     def send_json_message(self, queue, message):
         message = json.dumps(message)
-        channel = self.connection.channel()
+        connection = self.__get_pika_connection()
+        channel = connection.channel()
         channel.queue_declare(queue=queue, durable=True)
         channel.basic_publish(exchange='', routing_key=queue, body=message)
         channel.close()
+        connection.close()
 
     def __on_message_callback(self, ch, method, properties, body, processing_function):
         message= json.loads(body)
