@@ -28,7 +28,8 @@ class RabbitMQ:
         return pika.BlockingConnection(parameters)
     
     def close_connection(self):
-        self.connection.close()
+        if self.connection is not None:
+            self.connection.close()
 
     def send_json_message(self, queue, message):
         message = json.dumps(message)
@@ -69,7 +70,8 @@ class RabbitMQ:
     def listen_to_messages(self, queue_name, processing_function):
         while True:
             try:
-                self.connection = self.__get_pika_connection()
+                if self.connection is None or self.connection.is_closed:
+                    self.connection = self.__get_pika_connection()
                 channel = self.connection.channel()
                 channel.basic_qos(prefetch_count=1, global_qos=True)
                 arg = {}
