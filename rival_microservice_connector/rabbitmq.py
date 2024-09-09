@@ -20,10 +20,13 @@ class RabbitMQ:
         self.logger = logging.getLogger(__name__)
         self.max_priority = max_priority
         logging.getLogger("pika").setLevel(logging.WARN)
-        credentials = pika.PlainCredentials(self.user, self.password)
-        parameters = pika.ConnectionParameters(self.host, self.port, "/", credentials=credentials, heartbeat=self.heartbeat_timeout)
-        self.connection = pika.BlockingConnection(parameters)
+        self.connection = None
 
+    def __get_pika_connection(self):
+        credentials = pika.PlainCredentials(self.user, self.password)
+        parameters = pika.ConnectionParameters(self.host, self.port, "/", credentials=credentials)
+        return pika.BlockingConnection(parameters)
+    
     def close_connection(self):
         self.connection.close()
 
@@ -66,6 +69,7 @@ class RabbitMQ:
     def listen_to_messages(self, queue_name, processing_function):
         while True:
             try:
+                self.connection = self.__get_pika_connection()
                 channel = self.connection.channel()
                 channel.basic_qos(prefetch_count=1, global_qos=True)
                 arg = {}
@@ -84,4 +88,5 @@ class RabbitMQ:
                 self.logger.error(traceback.format_exc())
                 channel.stop_consuming()
                 channel.close()
+                self.close_connection()
                 sleep(20)
