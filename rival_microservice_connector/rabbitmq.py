@@ -11,7 +11,7 @@ import pika.exceptions
 STATUS_QUEUE_NAME = "job_status"
 
 class RabbitMQ:
-    def __init__(self, host, port, user, password, heartbeat_timeout=600, max_priority = None):
+    def __init__(self, host, port, user, password, heartbeat_timeout=600, max_priority = None, consumer_timeout = 1800000):
         self.host = host
         self.port = port
         self.user = user
@@ -19,6 +19,7 @@ class RabbitMQ:
         self.heartbeat_timeout = heartbeat_timeout
         self.logger = logging.getLogger(__name__)
         self.max_priority = max_priority
+        self.consumer_timeout = consumer_timeout
         logging.getLogger("pika").setLevel(logging.WARN)
         self.connection = None
 
@@ -78,7 +79,7 @@ class RabbitMQ:
                 channel.basic_qos(prefetch_count=1, global_qos=True)
                 arg = {}
                 if self.max_priority:
-                    arg = {"x-max-priority": self.max_priority}
+                    arg = {"x-max-priority": self.max_priority, "x-consumer-timeout": self.consumer_timeout}
                 try:
                     channel.queue_declare(queue=queue_name, durable=True, arguments=arg)
                 except pika.exceptions.AMQPChannelError as e:
