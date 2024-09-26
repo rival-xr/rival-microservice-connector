@@ -2,6 +2,7 @@ import json
 import pika
 import traceback
 import logging
+import ssl
 
 from time import sleep
 from functools import partial
@@ -28,12 +29,12 @@ class RabbitMQ:
         parsed_endpoint = urlparse(self.endpoint)
         scheme = parsed_endpoint.scheme
         if scheme == "amqps":
-            ssl = True
+            ssl_options = pika.SSLOptions(ssl.create_default_context())
         elif scheme == "amqp":
-            ssl = False
+            ssl_options = None
         else:
             raise ValueError(f"Invalid scheme {scheme} in endpoint {self.endpoint}")
-        parameters = pika.ConnectionParameters(parsed_endpoint.host, parsed_endpoint.port, "/", credentials=credentials, ssl=ssl, heartbeat=self.heartbeat_timeout)
+        parameters = pika.ConnectionParameters(parsed_endpoint.hostname, parsed_endpoint.port, "/", credentials=credentials, ssl_options=ssl_options, heartbeat=self.heartbeat_timeout)
         return pika.BlockingConnection(parameters)
     
     def close_connection(self):
