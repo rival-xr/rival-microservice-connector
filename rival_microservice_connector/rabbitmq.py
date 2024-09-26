@@ -2,18 +2,19 @@ import json
 import pika
 import traceback
 import logging
+import ssl
 
 from time import sleep
 from functools import partial
+from urllib.parse import urlparse
 
 import pika.exceptions
 
 STATUS_QUEUE_NAME = "job_status"
 
 class RabbitMQ:
-    def __init__(self, host, port, user, password, heartbeat_timeout=600, max_priority = None, consumer_timeout = 1800000):
-        self.host = host
-        self.port = port
+    def __init__(self, endpoint, user, password, heartbeat_timeout=600, max_priority = None, consumer_timeout = 1800000):
+        self.endpoint = endpoint
         self.user = user
         self.password = password
         self.heartbeat_timeout = heartbeat_timeout
@@ -25,7 +26,15 @@ class RabbitMQ:
 
     def __get_pika_connection(self):
         credentials = pika.PlainCredentials(self.user, self.password)
-        parameters = pika.ConnectionParameters(self.host, self.port, "/", credentials=credentials)
+        parsed_endpoint = urlparse(self.endpoint)
+        scheme = parsed_endpoint.scheme
+        if scheme == "amqps":
+            ssl_options = pika.SSLOptions(ssl.create_default_context())
+        elif scheme == "amqp":
+            ssl_options = None
+        else:
+            raise ValueError(f"Invalid scheme {scheme} in endpoint {self.endpoint}")
+        parameters = pika.ConnectionParameters(parsed_endpoint.hostname, parsed_endpoint.port, "/", credentials=credentials, ssl_options=ssl_options, heartbeat=self.heartbeat_timeout)
         return pika.BlockingConnection(parameters)
     
     def close_connection(self):
