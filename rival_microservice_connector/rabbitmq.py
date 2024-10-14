@@ -82,6 +82,7 @@ class RabbitMQ:
     def listen_to_messages(self, queue_name, processing_function):
         while True:
             try:
+                channel = None
                 if self.connection is None or self.connection.is_closed:
                     self.connection = self.__get_pika_connection()
                 channel = self.connection.channel()
@@ -100,7 +101,8 @@ class RabbitMQ:
                 channel.start_consuming()
             except Exception:
                 self.logger.error(traceback.format_exc())
-                channel.stop_consuming()
-                channel.close()
+                if channel is not None:
+                    channel.stop_consuming()
+                    channel.close()
                 self.close_connection()
                 sleep(20)
