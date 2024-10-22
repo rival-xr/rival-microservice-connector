@@ -50,9 +50,9 @@ class RabbitMQ:
         channel.close()
         connection.close()
 
-    def __on_message_callback(self, ch, method, properties, body, processing_function):
+    def __on_message_callback(self, ch, method, properties, body, processing_function, queue_name):
         message= json.loads(body)
-        self.logger.info(" [x] Received %r" % body)
+        self.logger.info(" [x] Received message on queue %s: %r", queue_name, body)
         jobId = message["jobId"]
         self.send_json_message(STATUS_QUEUE_NAME, {"jobId": jobId, "status": "IN_PROGRESS"})
         processing_function(jobId, message["payload"], ch, method)
@@ -95,7 +95,7 @@ class RabbitMQ:
                     if e.args[0] == 406 and "PRECONDITION_FAILED" in e.args[1] and "x-max-priority" in e.args[1]:
                         channel.queue_delete(queue=queue_name)
                         channel.queue_declare(queue=queue_name, durable=True, arguments=arg)
-                channel.basic_consume(queue=queue_name, on_message_callback=partial(self.__on_message_callback, processing_function=processing_function))
+                channel.basic_consume(queue=queue_name, on_message_callback=partial(self.__on_message_callback, processing_function=processing_function, queue_name=queue_name))
                 self.logger.info(' [*] Waiting for messages. To exit press CTRL+C')
                 channel.start_consuming()
             except Exception:
