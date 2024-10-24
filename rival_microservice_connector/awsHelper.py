@@ -25,12 +25,14 @@ def get_credentials():
             raise Exception("Error: AWS_SECRET_ACCESS_KEY environment variable must be set when using access key.")
         return access_key, secret_key
     elif token_file_path:
+        with open(os.getenv("AWS_WEB_IDENTITY_TOKEN_FILE"), 'r') as content_file:
+            web_identity_token = content_file.read()
         if not role_arn:
             raise Exception("Error: AWS_ROLE_ARN environment variable must be set when using web identity.")
 
         role = boto3.client('sts').assume_role_with_web_identity(
             RoleArn=os.getenv("AWS_ROLE_ARN"),RoleSessionName='assume-role',
-            WebIdentityTokenFile=token_file_path)
+            WebIdentityToken=web_identity_token)
         credentials = role['Credentials']
         return credentials['AccessKeyId'], credentials['SecretAccessKey']
     else:
