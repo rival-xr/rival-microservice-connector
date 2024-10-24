@@ -10,7 +10,7 @@ def get_session():
         raise Exception("Error: AWS_REGION environment variable must be set.")
     
     token_file_path = os.getenv('AWS_WEB_IDENTITY_TOKEN_FILE')
-    if token_file_path:
+    if token_file_path and not os.getenv("AWS_ACCESS_KEY_ID"):
         with open(os.getenv("AWS_WEB_IDENTITY_TOKEN_FILE"), 'r') as content_file:
             web_identity_token = content_file.read()
         role_arn = os.getenv('AWS_ROLE_ARN')
