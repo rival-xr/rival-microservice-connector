@@ -93,6 +93,7 @@ class RabbitMQ:
                 if self.consumer_timeout:
                     arg["x-consumer-timeout"] = self.consumer_timeout
                 try:
+                    self.logger.info(f"Declaring RabbitMq queue {queue_name} with arguments {arg}")
                     channel.queue_declare(queue=queue_name, durable=True, arguments=arg)
                 except pika.exceptions.AMQPChannelError as e:
                     if e.args[0] == 406 and "PRECONDITION_FAILED" in e.args[1] and "x-max-priority" in e.args[1]:
