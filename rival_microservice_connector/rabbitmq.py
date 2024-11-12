@@ -89,7 +89,9 @@ class RabbitMQ:
                 channel.basic_qos(prefetch_count=1, global_qos=True)
                 arg = {}
                 if self.max_priority:
-                    arg = {"x-max-priority": self.max_priority, "x-consumer-timeout": self.consumer_timeout}
+                    arg["x-max-priority"] = self.max_priority
+                if self.consumer_timeout:
+                    arg["x-consumer-timeout"] = self.consumer_timeout
                 try:
                     channel.queue_declare(queue=queue_name, durable=True, arguments=arg)
                 except pika.exceptions.AMQPChannelError as e:
