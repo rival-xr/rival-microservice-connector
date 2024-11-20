@@ -1,3 +1,4 @@
+
 import json
 import pika
 import traceback
@@ -79,26 +80,32 @@ class RabbitMQ:
         ack_cb = partial(self.ack_message, ch=ch, method=method)
         self.connection.add_callback_threadsafe(ack_cb)
 
+    def create_channel(self):
+        if self.connection is None or self.connection.is_closed:
+            self.connection = self.__get_pika_connection()
+        channel = self.connection.channel()
+        channel.basic_qos(prefetch_count=1, global_qos=True)
+        return channel
+    
+    def declare_queue(self, channel, queue_name):
+        arg = {}
+        if self.max_priority:
+            arg["x-max-priority"] = self.max_priority
+        if self.consumer_timeout:
+            arg["x-consumer-timeout"] = self.consumer_timeout
+        try:
+            self.logger.info(f"Declaring RabbitMq queue {queue_name} with arguments {arg}")
+            channel.queue_declare(queue=queue_name, durable=True, arguments=arg)
+        except pika.exceptions.AMQPChannelError as e:
+            if e.args[0] == 406 and "PRECONDITION_FAILED" in e.args[1] and "x-max-priority" in e.args[1]:
+                channel.queue_delete(queue=queue_name)
+                channel.queue_declare(queue=queue_name, durable=True, arguments=arg)
+
     def listen_to_messages(self, queue_name, processing_function):
         while True:
             try:
-                channel = None
-                if self.connection is None or self.connection.is_closed:
-                    self.connection = self.__get_pika_connection()
-                channel = self.connection.channel()
-                channel.basic_qos(prefetch_count=1, global_qos=True)
-                arg = {}
-                if self.max_priority:
-                    arg["x-max-priority"] = self.max_priority
-                if self.consumer_timeout:
-                    arg["x-consumer-timeout"] = self.consumer_timeout
-                try:
-                    self.logger.info(f"Declaring RabbitMq queue {queue_name} with arguments {arg}")
-                    channel.queue_declare(queue=queue_name, durable=True, arguments=arg)
-                except pika.exceptions.AMQPChannelError as e:
-                    if e.args[0] == 406 and "PRECONDITION_FAILED" in e.args[1] and "x-max-priority" in e.args[1]:
-                        channel.queue_delete(queue=queue_name)
-                        channel.queue_declare(queue=queue_name, durable=True, arguments=arg)
+                channel = self.create_channel()
+                self.declare_queue(channel, queue_name)
                 channel.basic_consume(queue=queue_name, on_message_callback=partial(self.__on_message_callback, processing_function=processing_function, queue_name=queue_name))
                 self.logger.info(' [*] Waiting for messages. To exit press CTRL+C')
                 channel.start_consuming()
@@ -109,3 +116,13 @@ class RabbitMQ:
                     channel.close()
                 self.close_connection()
                 sleep(20)
+
+    def process_one_message(self, queue_name, processing_function):
+        channel = self.create_channel()
+        self.declare_queue(channel, queue_name)
+        method_frame, header_frame, body = channel.basic_get(queue=queue_name)
+        if method_frame:
+            self.__on_message_callback(channel, method_frame, None, body, processing_function, queue_name)
+        else:
+            self.logger.info("No message found in queue %s", queue_name)
+        channel.close()
