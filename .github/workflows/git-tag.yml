@@ -3,7 +3,8 @@ name: git tag
 on:
   push:
     branches:
-      - master
+      - main
+  workflow_dispatch:
 jobs:
   git-tag:
     runs-on: ubuntu-latest
