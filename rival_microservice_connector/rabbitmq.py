@@ -1,4 +1,5 @@
 import json
+import threading
 import pika
 import traceback
 import logging
@@ -116,15 +117,30 @@ class RabbitMQ:
                 self.close_connection()
                 sleep(20)
 
+    def run_heartbeat(self, connection, stop_event):
+        """Heartbeat function to keep RabbitMQ connection alive. This is not needed if consuming events in a loop."""
+        try:
+            while not stop_event.wait(self.consumer_timeout):
+                connection.process_data_events()
+                self.logger.info("Heartbeat sent.")
+        except Exception as e:
+            self.logger.error(f"Heartbeat failed: {e}")
+
     def process_one_message(self, queue_name, processing_function):
         channel = self.create_channel()
         self.declare_queue(channel, queue_name)
         method_frame, header_frame, body = channel.basic_get(queue=queue_name)
         return_value = 0
         if method_frame:
-            return_value = self.__on_message_callback(channel, method_frame, None, body, processing_function, queue_name)
+            stop_event = threading.Event()
+            heartbeat_thread = threading.Thread(target=self.run_heartbeat, args=(self.connection, stop_event), daemon=True)
+            heartbeat_thread.start()
+            try:
+                return_value = self.__on_message_callback(channel, method_frame, None, body, processing_function, queue_name)
+            finally:
+                stop_event.set()
+                heartbeat_thread.join()
         else:
             self.logger.info("No message found in queue %s", queue_name)
         channel.close()
-        return return_value 
-        
+        return return_value
