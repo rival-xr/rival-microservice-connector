@@ -11,8 +11,9 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        ref: ${{ github.ref }}
-        fetch-depth: 0  # Fetch all history, needed for Nerdbank.GitVersioning
+        with:
+          ref: ${{ github.ref }}
+          fetch-depth: 0  # Fetch all history, needed for Nerdbank.GitVersioning
       - name: Log in to the Container registry
         uses: docker/login-action@65b78e6e13532edd9afa3aa52ac7964289d1a9c1
         with:
