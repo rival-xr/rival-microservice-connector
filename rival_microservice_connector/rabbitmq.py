@@ -1,4 +1,3 @@
-
 import json
 import pika
 import traceback
@@ -56,7 +55,7 @@ class RabbitMQ:
         self.logger.info(" [x] Received message on queue %s: %r", queue_name, body)
         jobId = message["jobId"]
         self.send_json_message(STATUS_QUEUE_NAME, {"jobId": jobId, "status": "IN_PROGRESS"})
-        processing_function(jobId, message["payload"], ch, method)
+        return processing_function(jobId, message["payload"], ch, method)
 
     def nack_message(self, ch, method, requeue: bool = False):
         if ch.is_open:
@@ -121,8 +120,11 @@ class RabbitMQ:
         channel = self.create_channel()
         self.declare_queue(channel, queue_name)
         method_frame, header_frame, body = channel.basic_get(queue=queue_name)
+        return_value = 0
         if method_frame:
-            self.__on_message_callback(channel, method_frame, None, body, processing_function, queue_name)
+            return_value = self.__on_message_callback(channel, method_frame, None, body, processing_function, queue_name)
         else:
             self.logger.info("No message found in queue %s", queue_name)
         channel.close()
+        return return_value 
+        
