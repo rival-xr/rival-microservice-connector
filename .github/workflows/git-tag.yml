@@ -1,5 +1,8 @@
 name: git tag
 
+permissions:
+  contents: write
+
 on:
   push:
     branches:
