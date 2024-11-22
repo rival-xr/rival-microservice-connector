@@ -120,7 +120,8 @@ class RabbitMQ:
     def run_heartbeat(self, connection, stop_event):
         """Heartbeat function to keep RabbitMQ connection alive. This is not needed if consuming events in a loop."""
         try:
-            while not stop_event.wait(self.consumer_timeout):
+            # Send heartbeat every 60 seconds
+            while not stop_event.wait(60):
                 connection.process_data_events()
                 self.logger.info("Heartbeat sent.")
         except Exception as e:
