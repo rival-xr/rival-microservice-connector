@@ -109,6 +109,7 @@ class RabbitMQ:
                 channel.basic_consume(queue=queue_name, on_message_callback=partial(self.__on_message_callback, processing_function=processing_function, queue_name=queue_name))
                 self.logger.info(' [*] Waiting for messages. To exit press CTRL+C')
                 channel.start_consuming()
+                self.logger.info("start_consuming call exited")
             except Exception:
                 self.logger.error(traceback.format_exc())
                 if channel is not None:
